@@ -1,52 +1,65 @@
 <?php 
 	
-	require_once '../includes/DbOperation.php';
+	class DbOperation
+	{
 
-	function isTheseParametersAvailable($params){
+		private $con;
 
-		$available = true;
-		$missingparams = "";
+		function __construct()
+		{
 
-		foreach ($params as $param) {
-			if (!isset($_POST[$param]) || strlen($_POST[$param]) <=0) {
-				$available = false;
-				$missingparams = $missingparams . ", " . $param;
+			require_once dirname(__FILE__). 'DbConnect.php';
+
+			$db = new DbConnect();
+
+			$this->con = $db->connect();
+		}
+
+		function getProdutos() {
+			$stmt = $this->con->prepare("SELECT id, nome, descricao, quantidade, valorUni, dataEntrada, imagem FROM tbprodutos");
+			$stmt->execute();
+			$stmt->bind_result($id, $nome, $descricao, $quantidade, $valorUni, $dataEntrada, $imagem);
+
+			$produtos = array();
+
+			while ($stmt->fetch()) {
+
+				$produto = array();
+				$produto['id'] = $id;
+				$produto['nome'] = $nome;
+				$produto['descricao'] = $descricao;
+				$produto['quantidade'] = $quantidade;
+				$produto['valorUni'] = $valorUni;
+				$produto['dataEntrada'] = $dataEntrada;
+				$produto['imagem'] = $imagem;
+
+				array_push($produtos, $produto);
 			}
+			return $produtos;
 		}
 
-		if (!$available) {
-			$response = array();
-			$response['error']  = true;
-			$response['message'] = 'Parameters ' . substr($missin, 1, strle($missingparams)) . ' missing';
-
-			echo json_encode($response);
-
-			die();
+		function createProduto($nome, $descricao, $quantidade, $valorUni, $imagem) {
+			$stmt = $this->prepare("INSERT INTO tbprodutos (nome, descricao, quantidade, valorUni, imagem) VALUES (?, ?, ?, ?, ?)");
+			$stmt->bind_param("ssidb",$nome, $descricao, $quantidade, $valorUni, $imagem);
+			if ($stmt->execute())
+				return true;
+			return false;
 		}
-	}
 
-	$response = array();
+		function updateProduto($id, $nome, $descricao, $quantidade, $valorUni) {
+			$stmt = $this->con->prepare("UPDATE tbprodutos SET nome = ?, descricao = ?, quantidade = ?, valorUni = ? WHERE id = ?");
+			$stmt->bind_param("ssidi", $nome, $descricao, $quantidade, $valorUni, $id);
+			if($stmt->execute())
+				return true;
+			return false;
+		}
 
-	if (isset($_GET['apicall'])) {
-
-		switch ($_GET['apicall']) {
-			case 'getProdutos':
-				$db = new DbOperation();
-				$response['error'] = false;
-				$response['message'] = 'Pedido concluído';
-				$response['produtos'] = $db->getProdutos();
-				break;
-			
-			default:
-				# code...
-				break;
+		function deleteProduto($id) {
+			$stmt = $this->con->prepare("DELETE FROM tbprodutos WHERE id = ?");
+			$stmt->bind_param("i", $id);
+			if ($stmt->execute())
+				return true;
+			return false;
 		}
 	}
-
-
-
-
-
-
-
- ?>
+?>
